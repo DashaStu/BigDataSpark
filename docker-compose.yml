@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: main_db
+    ports:
+      - "5434:5432"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server
+    container_name: clickhouse_db
+    environment:
+      CLICKHOUSE_DB: reports
+      CLICKHOUSE_USER: user
+      CLICKHOUSE_PASSWORD: password
+    volumes:
+      - ./scripts/init_ch.sql:/docker-entrypoint-initdb.d/init_ch.sql
+    ports:
+      - "8123:8123"
+
+  spark-etl:
+    build: .
+    container_name: spark_etl_job
+    user: root
+    depends_on:
+      - postgres
+      - clickhouse
+    environment:
+      - HOME=/tmp
+    volumes:
+      - ./data:/opt/bitnami/spark/data
+      - ./scripts:/opt/bitnami/spark/app/scripts
+    entrypoint: ["/bin/bash", "/opt/bitnami/spark/app/scripts/wait_and_run.sh"]
